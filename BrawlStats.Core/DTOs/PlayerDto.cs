@@ -8,7 +8,7 @@
         public int HighestTrophies { get; set; }
         public int ExpLevel { get; set; }
         public int ExpPoints { get; set; }
-        public int IsQualifiedFromChampionshipChallenge { get; set; }
+        public bool IsQualifiedFromChampionshipChallenge { get; set; }
         public int ThreeVsThreeVictories { get; set; }
         public int SoloVictories { get; set; }
         public int DuoVictories { get; set; }

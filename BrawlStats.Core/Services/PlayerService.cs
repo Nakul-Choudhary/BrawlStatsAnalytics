@@ -5,7 +5,8 @@ using BrawlStats.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace BrawlStats.Core.Services
-{
+{   
+
     public class PlayerService : IPlayerService
     {
         private readonly IPlayerRepository _playerRepository;

@@ -108,6 +108,49 @@ namespace BrawlStats.Infrastructure.Data
                     .HasForeignKey<PlayerAnalytics>(e => e.PlayerId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+            // MetaSnapshot configuration
+            modelBuilder.Entity<MetaSnapshot>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.BrawlerId, e.SnapshotDate, e.Mode });
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                // FIX: Add decimal precision
+                entity.Property(e => e.PickRate).HasPrecision(10, 4);
+                entity.Property(e => e.WinRate).HasPrecision(10, 4);
+                entity.Property(e => e.TrendPercentage).HasPrecision(10, 4);
+
+                entity.HasOne(e => e.Brawler)
+                    .WithMany(b => b.MetaSnapshots)
+                    .HasForeignKey(e => e.BrawlerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // PlayerAnalytics configuration
+            modelBuilder.Entity<PlayerAnalytics>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.PlayerTag).IsUnique();
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                // FIX: Add decimal precision
+                entity.Property(e => e.ClutchRating).HasPrecision(10, 4);
+                entity.Property(e => e.ConsistencyScore).HasPrecision(10, 4);
+                entity.Property(e => e.Last10WinRate).HasPrecision(10, 4);
+                entity.Property(e => e.SkillRating).HasPrecision(10, 4);
+
+                entity.HasOne(e => e.Player)
+                    .WithOne()
+                    .HasForeignKey<PlayerAnalytics>(e => e.PlayerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // PlayerBrawler precision
+            modelBuilder.Entity<PlayerBrawler>(entity =>
+            {
+                entity.Property(e => e.WinRate).HasPrecision(10, 4);
+            });
+
         }
     }
 }

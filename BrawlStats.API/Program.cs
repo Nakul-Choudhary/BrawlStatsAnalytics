@@ -6,6 +6,11 @@ using BrawlStats.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
+
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -25,7 +30,24 @@ builder.Services.AddDbContext<BrawlStatsDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // HttpClient for Brawl Stars API
-builder.Services.AddHttpClient<IBrawlStarsApiClient, BrawlStarsApiClient>();
+builder.Services.AddHttpClient<IBrawlStarsApiClient, BrawlStarsApiClient>((sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    var baseUrl = config["BrawlStarsApi:BaseUrl"];
+    var apiKey = config["BrawlStarsApi:ApiKey"];
+
+    // MUST SET BASE ADDRESS
+    client.BaseAddress = new Uri(baseUrl);
+
+    client.DefaultRequestHeaders.Clear();
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+    Console.WriteLine("Final HttpClient BaseAddress = " + client.BaseAddress);
+    Console.WriteLine(" API KEY LOADED? " + (apiKey != null));
+});
+
 
 // Repositories
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();

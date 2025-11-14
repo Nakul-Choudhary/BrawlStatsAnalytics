@@ -1,9 +1,11 @@
-﻿using System.Net.Http.Headers;
-using System.Text.Json;
-using BrawlStats.Core.DTOs;
+﻿using BrawlStats.Core.DTOs;
 using BrawlStats.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace BrawlStats.Infrastructure.ExternalApis
 {
@@ -14,6 +16,7 @@ namespace BrawlStats.Infrastructure.ExternalApis
         private readonly string _apiKey;
         private readonly string _baseUrl;
 
+
         public BrawlStarsApiClient(
             HttpClient httpClient,
             IConfiguration configuration,
@@ -21,12 +24,15 @@ namespace BrawlStats.Infrastructure.ExternalApis
         {
             _httpClient = httpClient;
             _logger = logger;
-            _apiKey = configuration["BrawlStarsApi:ApiKey"] ?? throw new InvalidOperationException("API Key not found");
-            _baseUrl = configuration["BrawlStarsApi:BaseUrl"] ?? "https://api.brawlstars.com/v1";
+            _logger.LogWarning("🔐 Loaded API Key? " + (!string.IsNullOrEmpty(_apiKey)));
+            _logger.LogWarning("🌐 Base URL: " + _httpClient.BaseAddress);
 
-            _httpClient.BaseAddress = new Uri(_baseUrl);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            _apiKey = configuration["BrawlStarsApi:ApiKey"] ?? throw new InvalidOperationException("API Key not found");
+            _baseUrl = configuration["BrawlStarsApi:BaseUrl"] ?? "https://api.brawlstars.com/v1/";
+            _httpClient = httpClient;
+            _logger = logger;
+            _apiKey = configuration["BrawlStarsApi:ApiKey"];
+            _baseUrl = configuration["BrawlStarsApi:BaseUrl"];
         }
 
         public async Task<PlayerDto?> GetPlayerAsync(string playerTag)
@@ -35,7 +41,17 @@ namespace BrawlStats.Infrastructure.ExternalApis
             {
                 // Encode the tag (replace # with %23)
                 var encodedTag = Uri.EscapeDataString(playerTag);
-                var response = await _httpClient.GetAsync($"/players/{encodedTag}");
+                var url = $"players/{encodedTag}";
+                var response = await _httpClient.GetAsync(url);
+
+                // 🔍 DEBUG LOGS
+                var debugContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"DEBUG: Request URL = {url}");
+                Console.WriteLine($"DEBUG: Status Code = {response.StatusCode}");
+                Console.WriteLine($"DEBUG: Response = {debugContent}");
+
+                if (!response.IsSuccessStatusCode)
+                    return null;
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -57,6 +73,7 @@ namespace BrawlStats.Infrastructure.ExternalApis
                 return null;
             }
         }
+
 
         public async Task<List<BattleDto>> GetBattleLogAsync(string playerTag)
         {

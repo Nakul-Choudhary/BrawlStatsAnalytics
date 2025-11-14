@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrawlStats.API", "BrawlStats.API\BrawlStats.API.csproj", "{2FBC4F7E-6D6C-4A57-A738-33BD4F3FE2F7}"
 EndProject
@@ -12,6 +12,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrawlStats.Infrastructure", "BrawlStats.Infrastructure\BrawlStats.Infrastructure.csproj", "{510499FB-3C1A-4E24-9D2D-DCA618127EDA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrawlStats.BackgroundJobs", "BrawlStats.BackgroundJobs\BrawlStats.BackgroundJobs.csproj", "{A3AAFE9D-A9DF-44E2-9FD9-C5EFE6A7CB6C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		index.html = index.html
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
