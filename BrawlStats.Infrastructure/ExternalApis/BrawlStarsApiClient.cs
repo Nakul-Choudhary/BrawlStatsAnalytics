@@ -1,10 +1,10 @@
-﻿using BrawlStats.Core.DTOs;
+﻿// File: BrawlStats.Infrastructure/ExternalApis/BrawlStarsApiClient.cs
+// REPLACE THE ENTIRE FILE WITH THIS
+
+using BrawlStats.Core.DTOs;
 using BrawlStats.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 
 namespace BrawlStats.Infrastructure.ExternalApis
@@ -13,9 +13,6 @@ namespace BrawlStats.Infrastructure.ExternalApis
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<BrawlStarsApiClient> _logger;
-        private readonly string _apiKey;
-        private readonly string _baseUrl;
-
 
         public BrawlStarsApiClient(
             HttpClient httpClient,
@@ -24,67 +21,59 @@ namespace BrawlStats.Infrastructure.ExternalApis
         {
             _httpClient = httpClient;
             _logger = logger;
-            _logger.LogWarning("🔐 Loaded API Key? " + (!string.IsNullOrEmpty(_apiKey)));
-            _logger.LogWarning("🌐 Base URL: " + _httpClient.BaseAddress);
 
-            _apiKey = configuration["BrawlStarsApi:ApiKey"] ?? throw new InvalidOperationException("API Key not found");
-            _baseUrl = configuration["BrawlStarsApi:BaseUrl"] ?? "https://api.brawlstars.com/v1/";
-            _httpClient = httpClient;
-            _logger = logger;
-            _apiKey = configuration["BrawlStarsApi:ApiKey"];
-            _baseUrl = configuration["BrawlStarsApi:BaseUrl"];
+            _logger.LogInformation($"✨ API Client initialized");
+            _logger.LogInformation($"🌐 BaseAddress: {_httpClient.BaseAddress}");
         }
 
         public async Task<PlayerDto?> GetPlayerAsync(string playerTag)
         {
             try
             {
-                // Encode the tag (replace # with %23)
                 var encodedTag = Uri.EscapeDataString(playerTag);
                 var url = $"players/{encodedTag}";
+
+                _logger.LogInformation($"🔍 GET {url}");
+
                 var response = await _httpClient.GetAsync(url);
-
-                // 🔍 DEBUG LOGS
-                var debugContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"DEBUG: Request URL = {url}");
-                Console.WriteLine($"DEBUG: Status Code = {response.StatusCode}");
-                Console.WriteLine($"DEBUG: Response = {debugContent}");
-
-                if (!response.IsSuccessStatusCode)
-                    return null;
+                var content = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning($"Failed to get player {playerTag}. Status: {response.StatusCode}");
+                    _logger.LogWarning($"❌ Status: {response.StatusCode} - {content}");
                     return null;
                 }
 
-                var content = await response.Content.ReadAsStringAsync();
                 var player = JsonSerializer.Deserialize<PlayerDto>(content, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
+                _logger.LogInformation($"✅ Found player: {player?.Name} with {player?.Brawlers?.Count ?? 0} brawlers");
                 return player;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting player {playerTag}");
+                _logger.LogError(ex, $"💥 Error getting player {playerTag}");
                 return null;
             }
         }
-
 
         public async Task<List<BattleDto>> GetBattleLogAsync(string playerTag)
         {
             try
             {
                 var encodedTag = Uri.EscapeDataString(playerTag);
-                var response = await _httpClient.GetAsync($"/players/{encodedTag}/battlelog");
+                var url = $"players/{encodedTag}/battlelog";
+
+                _logger.LogInformation($"🔍 GET {url}");
+
+                var response = await _httpClient.GetAsync(url);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning($"Failed to get battle log for {playerTag}. Status: {response.StatusCode}");
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning($"❌ Battle log failed: {response.StatusCode} - {errorContent}");
                     return new List<BattleDto>();
                 }
 
@@ -94,11 +83,12 @@ namespace BrawlStats.Infrastructure.ExternalApis
                     PropertyNameCaseInsensitive = true
                 });
 
+                _logger.LogInformation($"✅ Found {result?.Items?.Count ?? 0} battles");
                 return result?.Items ?? new List<BattleDto>();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting battle log for {playerTag}");
+                _logger.LogError(ex, $"💥 Error getting battle log for {playerTag}");
                 return new List<BattleDto>();
             }
         }
@@ -107,7 +97,7 @@ namespace BrawlStats.Infrastructure.ExternalApis
         {
             try
             {
-                var response = await _httpClient.GetAsync("/brawlers");
+                var response = await _httpClient.GetAsync("brawlers");
 
                 if (!response.IsSuccessStatusCode)
                 {

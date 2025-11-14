@@ -331,7 +331,16 @@
 
     <script>
         const API_URL = 'http://localhost:5071/api';
+        async function getAnalytics() {
+            // ... existing code ...
 
+            console.log('API Response:', data);  // Add this line
+
+            if (response.ok) {
+                displayAnalytics(data);
+                // ... rest of code
+            }
+        }
         function showMessage(message, type = 'info') {
             const msgDiv = document.getElementById('message');
             msgDiv.innerHTML = `<div class="${type}">${message}</div>`;
