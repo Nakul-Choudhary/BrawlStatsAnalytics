@@ -21,7 +21,7 @@
         public string? Result { get; set; }
         public int? Duration { get; set; }
         public int? TrophyChange { get; set; }
-        public BattlePlayerTagDto? StarPlayer { get; set; }
+        public string? StarPlayer { get; set; }
         public List<List<BattlePlayerDto>> Teams { get; set; } = new();
         public List<BattlePlayerDto> Players { get; set; } = new();
     }

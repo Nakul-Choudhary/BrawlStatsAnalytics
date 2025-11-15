@@ -5,7 +5,7 @@ using BrawlStats.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace BrawlStats.Core.Services
-{
+{   
 
     public class PlayerService : IPlayerService
     {
@@ -57,8 +57,7 @@ namespace BrawlStats.Core.Services
                 // Check if already tracked
                 if (await _playerRepository.ExistsAsync(playerTag))
                 {
-                    _logger.LogInformation($"Player {playerTag} already tracked, updating data...");
-                    await UpdatePlayerDataAsync(playerTag);
+                    _logger.LogInformation($"Player {playerTag} already tracked");
                     return true;
                 }
 
@@ -128,34 +127,19 @@ namespace BrawlStats.Core.Services
                 var battles = await _apiClient.GetBattleLogAsync(playerTag);
                 var newBattles = new List<Battle>();
 
-                foreach (var brawlerDto in playerDto.Brawlers)
+                foreach (var battleDto in battles)
                 {
-                    var playerBrawler = new PlayerBrawler
-                    {
-                        PlayerId = player.Id, 
-                        PlayerTag = playerDto.Tag,
-                        BrawlerId = brawlerDto.Id,
-                        BrawlerName = brawlerDto.Name,
-                        Power = brawlerDto.Power,
-                        Rank = brawlerDto.Rank,
-                        Trophies = brawlerDto.Trophies,
-                        HighestTrophies = brawlerDto.HighestTrophies,
-                        LastUpdated = DateTime.UtcNow
-                    };
-                    foreach (var battleDto in battles)
-                    {
-                        if (await _battleRepository.ExistsAsync(playerTag, battleDto.BattleTime))
-                            continue;
+                    if (await _battleRepository.ExistsAsync(playerTag, battleDto.BattleTime))
+                        continue;
 
-                        var battle = MapBattleDtoToEntity(battleDto, player, playerTag);
-                        newBattles.Add(battle);
-                    }
+                    var battle = MapBattleDtoToEntity(battleDto, player, playerTag);
+                    newBattles.Add(battle);
+                }
 
-                    if (newBattles.Any())
-                    {
-                        await _battleRepository.AddRangeAsync(newBattles);
-                        _logger.LogInformation($"Added {newBattles.Count} new battles for {playerTag}");
-                    }
+                if (newBattles.Any())
+                {
+                    await _battleRepository.AddRangeAsync(newBattles);
+                    _logger.LogInformation($"Added {newBattles.Count} new battles for {playerTag}");
                 }
             }
             catch (Exception ex)
@@ -168,16 +152,6 @@ namespace BrawlStats.Core.Services
         {
             var playerInBattle = FindPlayerInBattle(dto, playerTag);
 
-            // FIX: Properly compare star player tag
-            string? starPlayerTag = null;
-            if (dto.Battle.StarPlayer != null)
-            {
-                starPlayerTag = dto.Battle.StarPlayer.Tag;
-            }
-
-            var isStarPlayer = !string.IsNullOrEmpty(starPlayerTag) &&
-                              starPlayerTag.Equals(playerTag, StringComparison.OrdinalIgnoreCase);
-
             return new Battle
             {
                 BattleTime = dto.BattleTime,
@@ -187,7 +161,7 @@ namespace BrawlStats.Core.Services
                 Result = ParseResult(dto.Battle.Result),
                 TrophyChange = dto.Battle.TrophyChange,
                 Duration = dto.Battle.Duration,
-                IsStarPlayer = isStarPlayer,
+                IsStarPlayer = dto.Battle.StarPlayer == playerTag,  // ← FIXED: Direct string comparison
                 PlayerTag = playerTag,
                 PlayerId = player.Id,
                 BrawlerId = playerInBattle?.Brawler.Id ?? 0,
@@ -217,9 +191,7 @@ namespace BrawlStats.Core.Services
 
         private BattleResult ParseResult(string? result)
         {
-            if (string.IsNullOrEmpty(result)) return BattleResult.Draw;
-
-            return result.ToLower() switch
+            return result?.ToLower() switch
             {
                 "victory" => BattleResult.Victory,
                 "defeat" => BattleResult.Defeat,
@@ -232,17 +204,15 @@ namespace BrawlStats.Core.Services
             var wins = battles.Count(b => b.Result == BattleResult.Victory);
             var total = battles.Count;
 
-            _logger.LogInformation($"Calculating stats: {wins} wins out of {total} battles");
-
             return new OverallStatsDto
             {
                 TotalTrophies = player.Trophies,
                 HighestTrophies = player.HighestTrophies,
-                WinRate = total > 0 ? Math.Round((decimal)wins / total * 100, 2) : 0,
+                WinRate = total > 0 ? (decimal)wins / total * 100 : 0,
                 TotalBattles = total,
                 FavoriteMode = battles.GroupBy(b => b.Mode)
                     .OrderByDescending(g => g.Count())
-                    .FirstOrDefault()?.Key ?? "N/A"
+                    .FirstOrDefault()?.Key
             };
         }
 
@@ -251,14 +221,12 @@ namespace BrawlStats.Core.Services
             var recent10 = battles.Take(10).ToList();
             var wins = recent10.Count(b => b.Result == BattleResult.Victory);
 
-            var trend = wins >= 6 ? "Rising" : wins <= 3 ? "Falling" : "Stable";
-
             return new CustomMetricsDto
             {
                 SkillRating = CalculateSkillRating(player, battles),
-                ConsistencyScore = Math.Round(CalculateConsistency(battles), 2),
-                ImprovementTrend = trend,
-                ClutchRating = Math.Round(CalculateClutchRating(battles), 2)
+                ConsistencyScore = CalculateConsistency(battles),
+                ImprovementTrend = wins >= 6 ? "Rising" : wins <= 3 ? "Falling" : "Stable",
+                ClutchRating = CalculateClutchRating(battles)
             };
         }
 
@@ -314,12 +282,6 @@ namespace BrawlStats.Core.Services
 
         private List<BrawlerMasteryDto> CalculateBrawlerMastery(List<PlayerBrawler> brawlers)
         {
-            if (!brawlers.Any())
-            {
-                _logger.LogWarning("No brawlers found for player");
-                return new List<BrawlerMasteryDto>();
-            }
-
             return brawlers
                 .OrderByDescending(b => b.Trophies)
                 .Take(5)
