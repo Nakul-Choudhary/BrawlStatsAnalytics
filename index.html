@@ -54,7 +54,12 @@
             margin-bottom: 20px;
         }
 
-        input[type="text"] {
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"], input[type="number"] {
             flex: 1;
             padding: 15px;
             border: 2px solid #e0e0e0;
@@ -63,7 +68,7 @@
             transition: border-color 0.3s;
         }
 
-            input[type="text"]:focus {
+            input[type="text"]:focus, input[type="number"]:focus {
                 outline: none;
                 border-color: #667eea;
             }
@@ -92,6 +97,10 @@
             button:disabled {
                 opacity: 0.6;
                 cursor: not-allowed;
+            }
+
+            button.secondary {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             }
 
         .loading {
@@ -153,71 +162,36 @@
             border-bottom: 2px solid #667eea;
         }
 
-        .brawler-list {
+        .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
         }
 
-        .brawler-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
+        .form-group {
+            display: flex;
+            flex-direction: column;
         }
 
-        .brawler-name {
-            font-weight: bold;
-            font-size: 1.1em;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .brawler-stats {
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            font-weight: bold;
-            margin: 5px 5px 5px 0;
-        }
-
-            .badge.master {
-                background: #ffd700;
+            .form-group label {
+                margin-bottom: 8px;
                 color: #333;
+                font-weight: 600;
             }
 
-            .badge.expert {
-                background: #c0c0c0;
-                color: #333;
-            }
-
-            .badge.advanced {
-                background: #cd7f32;
-                color: white;
-            }
-
-            .badge.up {
-                background: #4caf50;
-                color: white;
-            }
-
-            .badge.down {
-                background: #f44336;
-                color: white;
-            }
-
-            .badge.stable {
-                background: #9e9e9e;
-                color: white;
+            .form-group input {
+                padding: 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 14px;
             }
 
         #analytics-content {
+            display: none;
+        }
+
+        #manual-entry-form {
             display: none;
         }
 
@@ -259,6 +233,81 @@
             </p>
             <div id="message"></div>
         </div>
+
+        <!-- MANUAL ENTRY FORM - HIDDEN BUT FUNCTIONAL IN BACKEND -->
+        <!--
+        <div class="card" style="display: none;">
+            <h2 style="margin-bottom: 20px;">Manual Stats Entry</h2>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Player Tag *</label>
+                <input type="text" id="manualPlayerTag" placeholder="#2PP" />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Player Name *</label>
+                <input type="text" id="manualPlayerName" placeholder="Player Name" />
+            </div>
+
+            <h3 class="section-title">Overall Stats</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Total Trophies *</label>
+                    <input type="number" id="manualTrophies" placeholder="25000" />
+                </div>
+                <div class="form-group">
+                    <label>Win Rate (%) *</label>
+                    <input type="number" step="0.1" id="manualWinRate" placeholder="65.5" />
+                </div>
+                <div class="form-group">
+                    <label>Total Battles *</label>
+                    <input type="number" id="manualTotalBattles" placeholder="5000" />
+                </div>
+                <div class="form-group">
+                    <label>Favorite Mode</label>
+                    <input type="text" id="manualFavoriteMode" placeholder="Gem Grab" />
+                </div>
+            </div>
+
+            <h3 class="section-title">Custom Metrics</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Skill Rating *</label>
+                    <input type="text" id="manualSkillRating" placeholder="A+" />
+                </div>
+                <div class="form-group">
+                    <label>Consistency Score *</label>
+                    <input type="number" step="0.1" id="manualConsistency" placeholder="85.5" />
+                </div>
+                <div class="form-group">
+                    <label>Clutch Rating (%) *</label>
+                    <input type="number" step="0.1" id="manualClutch" placeholder="72.3" />
+                </div>
+                <div class="form-group">
+                    <label>Improvement Trend *</label>
+                    <input type="text" id="manualTrend" placeholder="Improving" />
+                </div>
+            </div>
+
+            <h3 class="section-title">Recent Form (Last 10 Games)</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Wins *</label>
+                    <input type="number" id="manualRecentWins" placeholder="7" />
+                </div>
+                <div class="form-group">
+                    <label>Losses *</label>
+                    <input type="number" id="manualRecentLosses" placeholder="3" />
+                </div>
+                <div class="form-group">
+                    <label>Trend Direction *</label>
+                    <input type="text" id="manualRecentTrend" placeholder="Up" />
+                </div>
+            </div>
+
+            <button onclick="saveManualEntry()" style="margin-top: 20px; width: 100%;">Save Stats</button>
+        </div>
+        -->
 
         <div id="analytics-content">
             <div class="card">
@@ -323,8 +372,10 @@
                     </div>
                 </div>
 
+                <!-- COMMENTED OUT: Top 5 Brawlers Section
                 <h3 class="section-title">Top 5 Brawlers</h3>
                 <div class="brawler-list" id="brawlerList"></div>
+                -->
             </div>
         </div>
     </div>
@@ -403,6 +454,84 @@
             }
         }
 
+        // MANUAL ENTRY FUNCTION - Can be called programmatically from backend/console
+        async function saveManualEntry() {
+            // Collect all form data
+            const playerTag = document.getElementById('manualPlayerTag').value.trim();
+            const playerName = document.getElementById('manualPlayerName').value.trim();
+            const trophies = document.getElementById('manualTrophies').value;
+            const winRate = document.getElementById('manualWinRate').value;
+            const totalBattles = document.getElementById('manualTotalBattles').value;
+            const favoriteMode = document.getElementById('manualFavoriteMode').value.trim();
+            const skillRating = document.getElementById('manualSkillRating').value.trim();
+            const consistency = document.getElementById('manualConsistency').value;
+            const clutch = document.getElementById('manualClutch').value;
+            const trend = document.getElementById('manualTrend').value.trim();
+            const recentWins = document.getElementById('manualRecentWins').value;
+            const recentLosses = document.getElementById('manualRecentLosses').value;
+            const recentTrend = document.getElementById('manualRecentTrend').value.trim();
+
+            // Validation
+            if (!playerTag || !playerName || !trophies || !winRate || !totalBattles ||
+                !skillRating || !consistency || !clutch || !trend ||
+                !recentWins || !recentLosses || !recentTrend) {
+                showMessage('Please fill in all required fields (marked with *)!', 'error');
+                return;
+            }
+
+            const statsData = {
+                playerTag: playerTag.startsWith('#') ? playerTag : '#' + playerTag,
+                name: playerName,
+                overallStats: {
+                    totalTrophies: parseInt(trophies),
+                    winRate: parseFloat(winRate),
+                    totalBattles: parseInt(totalBattles),
+                    favoriteMode: favoriteMode || 'N/A'
+                },
+                customMetrics: {
+                    skillRating: skillRating,
+                    consistencyScore: parseFloat(consistency),
+                    clutchRating: parseFloat(clutch),
+                    improvementTrend: trend
+                },
+                recentForm: {
+                    last10Games: {
+                        wins: parseInt(recentWins),
+                        losses: parseInt(recentLosses),
+                        trendDirection: recentTrend
+                    }
+                },
+                brawlerMastery: [] // Empty array for brawlers
+            };
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_URL}/players/manual`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(statsData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Stats saved successfully!', 'success');
+                    displayAnalytics(statsData);
+                    document.getElementById('analytics-content').style.display = 'block';
+
+                    // Clear form
+                    document.querySelectorAll('#manual-entry-form input').forEach(input => input.value = '');
+                } else {
+                    showMessage(data.message || 'Failed to save stats', 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+
         function displayAnalytics(data) {
             document.getElementById('playerName').textContent = data.name;
             document.getElementById('playerTagDisplay').textContent = data.playerTag;
@@ -424,6 +553,8 @@
             document.getElementById('recentLosses').textContent = data.recentForm.last10Games.losses;
             document.getElementById('recentTrend').textContent = data.recentForm.last10Games.trendDirection;
 
+            // Brawler list code is commented out
+            /*
             const brawlerList = document.getElementById('brawlerList');
             brawlerList.innerHTML = '';
 
@@ -441,13 +572,70 @@
                 `;
                 brawlerList.appendChild(card);
             });
+            */
         }
 
-        document.getElementById('playerTag').addEventListener('keypress', function(e) {
+        document.getElementById('playerTag').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 getAnalytics();
             }
         });
+
+        // HELPER FUNCTION - Easy way to add manual stats via console
+        // Usage: addStats('#TAG', 'Name', trophies, winRate, battles, mode, skill, consistency, clutch, trend, wins, losses, trendDir)
+        window.addStats = function (tag, name, trophies, winRate, battles, mode, skill, consistency, clutch, trend, wins, losses, trendDir) {
+            const data = {
+                playerTag: tag.startsWith('#') ? tag : '#' + tag,
+                name: name,
+                overallStats: {
+                    totalTrophies: trophies,
+                    winRate: winRate,
+                    totalBattles: battles,
+                    favoriteMode: mode || 'N/A'
+                },
+                customMetrics: {
+                    skillRating: skill,
+                    consistencyScore: consistency,
+                    clutchRating: clutch,
+                    improvementTrend: trend
+                },
+                recentForm: {
+                    last10Games: {
+                        wins: wins,
+                        losses: losses,
+                        trendDirection: trendDir
+                    }
+                },
+                brawlerMastery: []
+            };
+
+            console.log('Sending data:', data);
+
+            fetch(`${API_URL}/players/manual`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(r => r.json())
+                .then(result => {
+                    console.log('✅ Success:', result);
+                    // Automatically display the analytics
+                    displayAnalytics(data);
+                    document.getElementById('analytics-content').style.display = 'block';
+                    showMessage('Stats added successfully!', 'success');
+                })
+                .catch(error => {
+                    console.error('❌ Error:', error);
+                    showMessage('Error: ' + error.message, 'error');
+                });
+        };
+
+        // Log helper instructions on page load
+        console.log('%c🎮 Brawl Stats Helper Loaded!', 'color: #667eea; font-size: 16px; font-weight: bold;');
+        console.log('%cTo add manual stats, use:', 'color: #764ba2; font-weight: bold;');
+        console.log('%caddStats(tag, name, trophies, winRate, battles, mode, skill, consistency, clutch, trend, wins, losses, trendDir)', 'color: #666;');
+        console.log('%cExample:', 'color: #764ba2; font-weight: bold;');
+        console.log('%caddStats("#TEST123", "TestPlayer", 25000, 65.5, 5000, "Gem Grab", "A+", 85.5, 72.3, "Improving", 7, 3, "Up")', 'color: #4caf50;');
     </script>
 </body>
 </html>

@@ -90,6 +90,83 @@ namespace BrawlStats.API.Controllers
                 return StatusCode(500, new { message = "An error occurred while updating player data" });
             }
         }
+        // Add this to your PlayersController or wherever you have your API endpoints
+
+        [HttpPost("manual")]
+        public async Task<IActionResult> SaveManualStats([FromBody] ManualStatsRequest request)
+        {
+            try
+            {
+                // Validate the request
+                if (string.IsNullOrEmpty(request.PlayerTag) || string.IsNullOrEmpty(request.Name))
+                {
+                    return BadRequest(new { message = "Player tag and name are required" });
+                }
+
+                // Here you would save to your database
+                // For example:
+                // await _dbContext.PlayerAnalytics.AddAsync(new PlayerAnalytics
+                // {
+                //     PlayerTag = request.PlayerTag,
+                //     Name = request.Name,
+                //     OverallStats = JsonSerializer.Serialize(request.OverallStats),
+                //     CustomMetrics = JsonSerializer.Serialize(request.CustomMetrics),
+                //     RecentForm = JsonSerializer.Serialize(request.RecentForm),
+                //     CreatedAt = DateTime.UtcNow
+                // });
+                // await _dbContext.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Stats saved successfully",
+                    playerTag = request.PlayerTag,
+                    name = request.Name
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error saving stats: {ex.Message}" });
+            }
+        }
+
+        // Add these models to your Models folder or at the top of your controller file
+        public class ManualStatsRequest
+        {
+            public string PlayerTag { get; set; }
+            public string Name { get; set; }
+            public OverallStats OverallStats { get; set; }
+            public CustomMetrics CustomMetrics { get; set; }
+            public RecentForm RecentForm { get; set; }
+            public List<object> BrawlerMastery { get; set; }
+        }
+
+        public class OverallStats
+        {
+            public int TotalTrophies { get; set; }
+            public double WinRate { get; set; }
+            public int TotalBattles { get; set; }
+            public string FavoriteMode { get; set; }
+        }
+
+        public class CustomMetrics
+        {
+            public string SkillRating { get; set; }
+            public double ConsistencyScore { get; set; }
+            public double ClutchRating { get; set; }
+            public string ImprovementTrend { get; set; }
+        }
+
+        public class RecentForm
+        {
+            public Last10Games Last10Games { get; set; }
+        }
+
+        public class Last10Games
+        {
+            public int Wins { get; set; }
+            public int Losses { get; set; }
+            public string TrendDirection { get; set; }
+        }
     }
 
     public class TrackPlayerRequest
