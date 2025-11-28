@@ -28,15 +28,13 @@
 
     public class BattlePlayerDto
     {
-        public BattlePlayerTagDto Tag { get; set; } = new();
+        // ✅ FIX: Tag is a string, not a nested object
+        public string Tag { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public BattleBrawlerDto Brawler { get; set; } = new();
     }
 
-    public class BattlePlayerTagDto
-    {
-        public string Tag { get; set; } = string.Empty;
-    }
+    // ❌ REMOVE: BattlePlayerTagDto is not needed anymore
 
     public class BattleBrawlerDto
     {

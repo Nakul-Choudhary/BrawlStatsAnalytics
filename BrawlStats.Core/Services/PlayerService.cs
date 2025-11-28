@@ -283,11 +283,13 @@ namespace BrawlStats.Core.Services
         {
             foreach (var team in dto.Battle.Teams)
             {
-                var player = team.FirstOrDefault(p => p.Tag.Tag == playerTag);
+                // ✅ FIX: Tag is now a string directly
+                var player = team.FirstOrDefault(p => p.Tag == playerTag);
                 if (player != null) return player;
             }
 
-            return dto.Battle.Players.FirstOrDefault(p => p.Tag.Tag == playerTag);
+            // ✅ FIX: Tag is now a string directly
+            return dto.Battle.Players.FirstOrDefault(p => p.Tag == playerTag);
         }
 
         private DateTime ParseBattleTime(string battleTime)
