@@ -39,6 +39,8 @@ namespace BrawlStats.Core.Services
 
             var battles = await _battleRepository.GetByPlayerTagAsync(playerTag, 100);
 
+            _logger.LogInformation($"📊 Found {battles.Count} battles for {playerTag}");
+
             var analytics = new PlayerAnalyticsDto
             {
                 PlayerTag = player.PlayerTag,
@@ -92,7 +94,7 @@ namespace BrawlStats.Core.Services
 
                 await _playerRepository.AddAsync(player);
 
-                // ✅ Store PlayerBrawlers using repository method
+                // Store PlayerBrawlers
                 Console.WriteLine($"💪 Processing {playerDto.Brawlers.Count} brawlers...");
 
                 var brawlerData = playerDto.Brawlers.Select(b => (
@@ -189,6 +191,14 @@ namespace BrawlStats.Core.Services
                 var battles = await _apiClient.GetBattleLogAsync(playerTag);
                 _logger.LogInformation($"📊 API returned {battles.Count} battles");
 
+                // ✅ IMPORTANT: Check if no battles were returned
+                if (battles.Count == 0)
+                {
+                    _logger.LogWarning($"⚠️ Player {playerTag} has NO battles in their battle log!");
+                    _logger.LogWarning($"⚠️ This could mean: player is new, inactive, has privacy settings enabled, or no recent games");
+                    return; // Exit early since there's nothing to process
+                }
+
                 var newBattles = new List<Battle>();
 
                 foreach (var battleDto in battles)
@@ -283,12 +293,10 @@ namespace BrawlStats.Core.Services
         {
             foreach (var team in dto.Battle.Teams)
             {
-                // ✅ FIX: Tag is now a string directly
                 var player = team.FirstOrDefault(p => p.Tag == playerTag);
                 if (player != null) return player;
             }
 
-            // ✅ FIX: Tag is now a string directly
             return dto.Battle.Players.FirstOrDefault(p => p.Tag == playerTag);
         }
 
@@ -320,7 +328,7 @@ namespace BrawlStats.Core.Services
                 TotalBattles = total,
                 FavoriteMode = battles.GroupBy(b => b.Mode)
                     .OrderByDescending(g => g.Count())
-                    .FirstOrDefault()?.Key
+                    .FirstOrDefault()?.Key ?? "N/A"
             };
         }
 
@@ -344,7 +352,11 @@ namespace BrawlStats.Core.Services
             var wins = battles.Count(b => b.Result == BattleResult.Victory);
             var total = battles.Count;
 
-            if (total == 0) return baseRating;
+            if (total == 0)
+            {
+                _logger.LogWarning($"No battles found for skill rating calculation, returning base rating");
+                return baseRating;
+            }
 
             var winRate = (decimal)wins / total;
             var adjustment = (int)((winRate - 0.5m) * 1000);
@@ -354,7 +366,11 @@ namespace BrawlStats.Core.Services
 
         private decimal CalculateConsistency(List<Battle> battles)
         {
-            if (battles.Count < 5) return 50m;
+            if (battles.Count < 5)
+            {
+                _logger.LogWarning($"Not enough battles ({battles.Count}) for consistency calculation");
+                return 50m;
+            }
 
             var trophyChanges = battles
                 .Where(b => b.TrophyChange.HasValue)
@@ -374,7 +390,7 @@ namespace BrawlStats.Core.Services
             var starPlayerCount = battles.Count(b => b.IsStarPlayer);
             var total = battles.Count;
 
-            if (total == 0) return 50m;
+            if (total == 0) return 0m;
 
             return (decimal)starPlayerCount / total * 100;
         }

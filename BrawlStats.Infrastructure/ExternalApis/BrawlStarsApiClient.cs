@@ -81,18 +81,21 @@ namespace BrawlStats.Infrastructure.ExternalApis
                     Console.WriteLine($"❌ Error response: {content}");
                     _logger.LogWarning($"Failed to get battle log for {playerTag}. Status: {response.StatusCode}, Response: {content}");
 
-                    // ⚠️ IMPORTANT: Check for specific error codes
+                    // Check for specific error codes
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                     {
                         Console.WriteLine($"⚠️ Player {playerTag} not found or has no battle log");
+                        _logger.LogWarning($"Player {playerTag} not found or battle log unavailable");
                     }
                     else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                     {
                         Console.WriteLine($"⚠️ Rate limit exceeded! Wait before making more requests");
+                        _logger.LogWarning($"Rate limit exceeded for battle log request");
                     }
                     else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         Console.WriteLine($"⚠️ API key might be invalid or expired");
+                        _logger.LogError($"API authentication failed - check API key");
                     }
 
                     return new List<BattleDto>();
@@ -116,6 +119,7 @@ namespace BrawlStats.Infrastructure.ExternalApis
                 {
                     Console.WriteLine($"⚠️ Player {playerTag} has no battles in their battle log");
                     Console.WriteLine($"⚠️ This could mean: player is new, inactive, or has privacy settings enabled");
+                    _logger.LogWarning($"Player {playerTag} has empty battle log");
                 }
 
                 _logger.LogInformation($"Found {battles.Count} battles for {playerTag}");

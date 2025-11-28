@@ -14,7 +14,7 @@ namespace BrawlStats.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<List<Battle>> GetByPlayerTagAsync(string playerTag, int count = 25)
+        public async Task<List<Battle>> GetByPlayerTagAsync(string playerTag, int count = 250000)
         {
             return await _context.Battles
                 .Where(b => b.PlayerTag == playerTag)
