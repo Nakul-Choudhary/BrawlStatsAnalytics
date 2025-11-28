@@ -5,25 +5,27 @@ using BrawlStats.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace BrawlStats.Core.Services
-{   
-
+{
     public class PlayerService : IPlayerService
     {
         private readonly IPlayerRepository _playerRepository;
         private readonly IBattleRepository _battleRepository;
         private readonly IBrawlStarsApiClient _apiClient;
         private readonly ILogger<PlayerService> _logger;
+        private readonly IPlayerBrawlerRepository _playerBrawlerRepository;
 
         public PlayerService(
             IPlayerRepository playerRepository,
             IBattleRepository battleRepository,
             IBrawlStarsApiClient apiClient,
-            ILogger<PlayerService> logger)
+            ILogger<PlayerService> logger,
+            IPlayerBrawlerRepository playerBrawlerRepository)
         {
             _playerRepository = playerRepository;
             _battleRepository = battleRepository;
             _apiClient = apiClient;
             _logger = logger;
+            _playerBrawlerRepository = playerBrawlerRepository;
         }
 
         public async Task<PlayerAnalyticsDto?> GetPlayerAnalyticsAsync(string playerTag)
@@ -57,7 +59,8 @@ namespace BrawlStats.Core.Services
                 // Check if already tracked
                 if (await _playerRepository.ExistsAsync(playerTag))
                 {
-                    _logger.LogInformation($"Player {playerTag} already tracked");
+                    _logger.LogInformation($"Player {playerTag} already tracked, updating...");
+                    await UpdatePlayerDataAsync(playerTag);
                     return true;
                 }
 
@@ -89,6 +92,30 @@ namespace BrawlStats.Core.Services
 
                 await _playerRepository.AddAsync(player);
 
+                // ✅ Store PlayerBrawlers using repository method
+                Console.WriteLine($"💪 Processing {playerDto.Brawlers.Count} brawlers...");
+
+                var brawlerData = playerDto.Brawlers.Select(b => (
+                    apiBrawlerId: b.Id,
+                    name: b.Name,
+                    power: b.Power,
+                    rank: b.Rank,
+                    trophies: b.Trophies,
+                    highestTrophies: b.HighestTrophies
+                )).ToList();
+
+                var playerBrawlers = await _playerBrawlerRepository.CreateFromApiDataAsync(
+                    player.Id,
+                    player.PlayerTag,
+                    brawlerData);
+
+                Console.WriteLine($"✅ Created {playerBrawlers.Count} brawler records");
+
+                if (playerBrawlers.Any())
+                {
+                    await _playerBrawlerRepository.AddOrUpdateRangeAsync(playerBrawlers);
+                }
+
                 // Fetch and store initial battles
                 await UpdatePlayerDataAsync(playerTag);
 
@@ -106,11 +133,23 @@ namespace BrawlStats.Core.Services
         {
             try
             {
+                _logger.LogInformation($"📥 Starting update for player {playerTag}");
+
                 var playerDto = await _apiClient.GetPlayerAsync(playerTag);
-                if (playerDto == null) return;
+                if (playerDto == null)
+                {
+                    _logger.LogWarning($"❌ Failed to fetch player {playerTag} from API");
+                    return;
+                }
 
                 var player = await _playerRepository.GetByTagAsync(playerTag);
-                if (player == null) return;
+                if (player == null)
+                {
+                    _logger.LogWarning($"❌ Player {playerTag} not found in database");
+                    return;
+                }
+
+                _logger.LogInformation($"📝 Updating player stats for {playerTag}");
 
                 // Update player stats
                 player.Trophies = playerDto.Trophies;
@@ -123,28 +162,96 @@ namespace BrawlStats.Core.Services
 
                 await _playerRepository.UpdateAsync(player);
 
+                // Update PlayerBrawlers
+                _logger.LogInformation($"💪 Updating {playerDto.Brawlers.Count} brawlers for {playerTag}");
+
+                var brawlerData = playerDto.Brawlers.Select(b => (
+                    apiBrawlerId: b.Id,
+                    name: b.Name,
+                    power: b.Power,
+                    rank: b.Rank,
+                    trophies: b.Trophies,
+                    highestTrophies: b.HighestTrophies
+                )).ToList();
+
+                var playerBrawlers = await _playerBrawlerRepository.CreateFromApiDataAsync(
+                    player.Id,
+                    player.PlayerTag,
+                    brawlerData);
+
+                if (playerBrawlers.Any())
+                {
+                    await _playerBrawlerRepository.AddOrUpdateRangeAsync(playerBrawlers);
+                }
+
                 // Fetch and store new battles
+                _logger.LogInformation($"⚔️ Fetching battle log for {playerTag}");
                 var battles = await _apiClient.GetBattleLogAsync(playerTag);
+                _logger.LogInformation($"📊 API returned {battles.Count} battles");
+
                 var newBattles = new List<Battle>();
 
                 foreach (var battleDto in battles)
                 {
                     if (await _battleRepository.ExistsAsync(playerTag, battleDto.BattleTime))
+                    {
+                        _logger.LogDebug($"⏭️ Battle {battleDto.BattleTime} already exists, skipping");
                         continue;
+                    }
 
                     var battle = MapBattleDtoToEntity(battleDto, player, playerTag);
                     newBattles.Add(battle);
                 }
 
+                _logger.LogInformation($"💾 Saving {newBattles.Count} new battles");
+
                 if (newBattles.Any())
                 {
                     await _battleRepository.AddRangeAsync(newBattles);
-                    _logger.LogInformation($"Added {newBattles.Count} new battles for {playerTag}");
+                    _logger.LogInformation($"✅ Added {newBattles.Count} new battles for {playerTag}");
+
+                    // Update PlayerBrawler stats from battles
+                    _logger.LogInformation($"🔄 Recalculating brawler stats from battles");
+                    await UpdatePlayerBrawlerStatsFromBattles(player.Id, playerTag);
+                    _logger.LogInformation($"✅ Updated brawler stats");
+                }
+                else
+                {
+                    _logger.LogInformation($"ℹ️ No new battles to add for {playerTag}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating player data for {playerTag}");
+                _logger.LogError(ex, $"💥 Error updating player data for {playerTag}");
+            }
+        }
+
+        private async Task UpdatePlayerBrawlerStatsFromBattles(int playerId, string playerTag)
+        {
+            var battles = await _battleRepository.GetByPlayerTagAsync(playerTag, 1000);
+
+            var brawlerStats = battles
+                .GroupBy(b => b.BrawlerId)
+                .Select(g => new
+                {
+                    BrawlerId = g.Key,
+                    TotalBattles = g.Count(),
+                    Wins = g.Count(b => b.Result == BattleResult.Victory),
+                    Losses = g.Count(b => b.Result == BattleResult.Defeat)
+                })
+                .ToList();
+
+            foreach (var stat in brawlerStats)
+            {
+                var playerBrawler = await _playerBrawlerRepository.GetByPlayerAndBrawlerAsync(playerTag, stat.BrawlerId);
+                if (playerBrawler != null)
+                {
+                    playerBrawler.TotalBattles = stat.TotalBattles;
+                    playerBrawler.Wins = stat.Wins;
+                    playerBrawler.Losses = stat.Losses;
+                    playerBrawler.WinRate = stat.TotalBattles > 0 ? (decimal)stat.Wins / stat.TotalBattles * 100 : 0;
+                    await _playerBrawlerRepository.AddOrUpdateAsync(playerBrawler);
+                }
             }
         }
 
@@ -161,7 +268,7 @@ namespace BrawlStats.Core.Services
                 Result = ParseResult(dto.Battle.Result),
                 TrophyChange = dto.Battle.TrophyChange,
                 Duration = dto.Battle.Duration,
-                IsStarPlayer = dto.Battle.StarPlayer == playerTag,  // ← FIXED: Direct string comparison
+                IsStarPlayer = dto.Battle.StarPlayer == playerTag,
                 PlayerTag = playerTag,
                 PlayerId = player.Id,
                 BrawlerId = playerInBattle?.Brawler.Id ?? 0,
@@ -185,7 +292,6 @@ namespace BrawlStats.Core.Services
 
         private DateTime ParseBattleTime(string battleTime)
         {
-            // Format: 20241114T123045.000Z
             return DateTime.TryParse(battleTime, out var result) ? result : DateTime.UtcNow;
         }
 

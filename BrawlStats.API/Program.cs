@@ -1,4 +1,4 @@
-using BrawlStats.Core.Interfaces;
+﻿using BrawlStats.Core.Interfaces;
 using BrawlStats.Core.Services;
 using BrawlStats.Infrastructure.Data;
 using BrawlStats.Infrastructure.ExternalApis;
@@ -10,7 +10,6 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
     .AddEnvironmentVariables();
-
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -33,30 +32,27 @@ builder.Services.AddDbContext<BrawlStatsDbContext>(options =>
 builder.Services.AddHttpClient<IBrawlStarsApiClient, BrawlStarsApiClient>((sp, client) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-
     var baseUrl = config["BrawlStarsApi:BaseUrl"];
     var apiKey = config["BrawlStarsApi:ApiKey"];
 
-    // MUST SET BASE ADDRESS
     client.BaseAddress = new Uri(baseUrl);
-
     client.DefaultRequestHeaders.Clear();
     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 
     Console.WriteLine("Final HttpClient BaseAddress = " + client.BaseAddress);
-    Console.WriteLine(" API KEY LOADED? " + (apiKey != null));
+    Console.WriteLine("API KEY LOADED? " + (apiKey != null));
 });
-
 
 // Repositories
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IBattleRepository, BattleRepository>();
+builder.Services.AddScoped<IPlayerBrawlerRepository, PlayerBrawlerRepository>();
 
 // Services
 builder.Services.AddScoped<IPlayerService, PlayerService>();
 
-// CORS (if needed for frontend later)
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -69,11 +65,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Initialize database
+// Initialize database with service provider for API access
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<BrawlStatsDbContext>();
-    await DbInitializer.InitializeAsync(context);
+    await DbInitializer.InitializeAsync(context, scope.ServiceProvider);
 }
 
 // Configure the HTTP request pipeline.
@@ -84,11 +80,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 // Welcome endpoint

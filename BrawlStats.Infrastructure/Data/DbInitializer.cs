@@ -1,25 +1,68 @@
-﻿using BrawlStats.Domain.Entities;
+﻿using BrawlStats.Core.Interfaces;
+using BrawlStats.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BrawlStats.Infrastructure.Data
 {
     public static class DbInitializer
     {
-        public static async Task InitializeAsync(BrawlStatsDbContext context)
+        public static async Task InitializeAsync(BrawlStatsDbContext context, IServiceProvider serviceProvider)
         {
             // Ensure database is created
             await context.Database.MigrateAsync();
 
-            // Seed initial data if needed
+            // Seed brawlers from API
             if (!await context.Brawlers.AnyAsync())
             {
-                await SeedBrawlersAsync(context);
+                Console.WriteLine("📥 No brawlers found, fetching from API...");
+                await SeedBrawlersFromApiAsync(context, serviceProvider);
+            }
+            else
+            {
+                Console.WriteLine($"✅ Database already has {await context.Brawlers.CountAsync()} brawlers");
             }
         }
 
-        private static async Task SeedBrawlersAsync(BrawlStatsDbContext context)
+        private static async Task SeedBrawlersFromApiAsync(BrawlStatsDbContext context, IServiceProvider serviceProvider)
         {
-            // Add some common brawlers (you'll get full list from API later)
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                var apiClient = scope.ServiceProvider.GetRequiredService<IBrawlStarsApiClient>();
+
+                Console.WriteLine("🔍 Fetching brawlers from Brawl Stars API...");
+                var brawlersDto = await apiClient.GetBrawlersAsync();
+
+                if (brawlersDto == null || !brawlersDto.Any())
+                {
+                    Console.WriteLine("⚠️ No brawlers returned from API, using fallback seed data");
+                    await SeedFallbackBrawlers(context);
+                    return;
+                }
+
+                var brawlers = brawlersDto.Select(b => new Brawler
+                {
+                    BrawlerId = b.Id,
+                    Name = b.Name
+                }).ToList();
+
+                await context.Brawlers.AddRangeAsync(brawlers);
+                await context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ Successfully seeded {brawlers.Count} brawlers from API");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error seeding brawlers from API: {ex.Message}");
+                Console.WriteLine("⚠️ Using fallback seed data");
+                await SeedFallbackBrawlers(context);
+            }
+        }
+
+        private static async Task SeedFallbackBrawlers(BrawlStatsDbContext context)
+        {
+            // Fallback seed data with some common brawlers
             var brawlers = new List<Brawler>
             {
                 new Brawler { BrawlerId = 16000000, Name = "Shelly" },
@@ -37,6 +80,7 @@ namespace BrawlStats.Infrastructure.Data
 
             await context.Brawlers.AddRangeAsync(brawlers);
             await context.SaveChangesAsync();
+            Console.WriteLine($"✅ Seeded {brawlers.Count} fallback brawlers");
         }
     }
 }
